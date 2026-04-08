@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { StyleSheet, View, Text, ActivityIndicator, FlatList } from 'react-native';
-import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
+// MODIFICACIÓN: Importamos UrlTile
+import MapView, { Marker, PROVIDER_GOOGLE, UrlTile } from 'react-native-maps'; 
 import { db } from '../config/firebase'; 
 import { collection, onSnapshot } from "firebase/firestore";
 
@@ -10,12 +11,10 @@ export default function AdminScreen() {
   const mapRef = useRef(null);
 
   useEffect(() => {
-    // Escuchamos la colección "conductores" en tiempo real
     const unsub = onSnapshot(collection(db, "conductores"), (snapshot) => {
       const docs = [];
       snapshot.forEach((doc) => {
         const data = doc.data();
-        // Solo agregamos conductores que tengan datos de ubicación válidos
         if (data.ubicacion && data.ubicacion.latitude && data.ubicacion.longitude) {
           docs.push({ id: doc.id, ...data });
         }
@@ -27,10 +26,8 @@ export default function AdminScreen() {
     return () => unsub();
   }, []);
 
-  // Función opcional para centrar el mapa cuando haya unidades
   useEffect(() => {
     if (conductores.length > 0 && mapRef.current) {
-      // Tomamos la ubicación del primer conductor para centrar la vista inicial
       const primerTaxi = conductores[0].ubicacion;
       mapRef.current.animateToRegion({
         latitude: primerTaxi.latitude,
@@ -58,6 +55,13 @@ export default function AdminScreen() {
           longitudeDelta: 0.07,
         }}
       >
+        {/* --- CAPA VISUAL GRATUITA PARA EL ADMINISTRADOR --- */}
+        <UrlTile
+          urlTemplate="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+          maximumZ={19}
+          flipY={false}
+        />
+
         {conductores.map((taxi) => (
           <Marker 
             key={taxi.id}
