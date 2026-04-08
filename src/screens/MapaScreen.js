@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { StyleSheet, Text, View, ActivityIndicator, TouchableOpacity, Modal, Alert } from 'react-native';
-// MODIFICACIÓN: Importamos UrlTile
-import MapView, { Marker, PROVIDER_GOOGLE, UrlTile } from 'react-native-maps'; 
+import MapView, { Marker, UrlTile } from 'react-native-maps'; // Quitamos PROVIDER_GOOGLE
 import * as Location from 'expo-location';
 import { Accelerometer, Gyroscope } from 'expo-sensors';
 import { db, auth } from '../config/firebase'; 
@@ -71,7 +70,6 @@ export default function MapaScreen() {
             tipoAlerta: "Giro Brusco",
             fechaAlerta: new Date().toISOString()
           });
-          console.log("🔄 Giro brusco reportado a la base");
         }
       }
     });
@@ -96,7 +94,6 @@ export default function MapaScreen() {
     <View style={styles.container}>
       <MapView
         ref={mapRef}
-        provider={PROVIDER_GOOGLE}
         style={styles.map}
         initialRegion={{
           latitude: location?.coords.latitude || 19.4326,
@@ -104,14 +101,12 @@ export default function MapaScreen() {
           latitudeDelta: 0.005, 
           longitudeDelta: 0.005,
         }}
-        showsUserLocation={true}
-        followsUserLocation={true}
       >
-        {/* --- NUEVA CAPA VISUAL GRATUITA --- */}
         <UrlTile
           urlTemplate="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
           maximumZ={19}
           flipY={false}
+          zIndex={100}
         />
 
         {location && (
@@ -121,6 +116,7 @@ export default function MapaScreen() {
               longitude: location.coords.longitude
             }} 
             title="Mi Taxi"
+            zIndex={101}
           >
             <View style={styles.taxiMarker}>
                <Text style={{fontSize: 30}}>🚕</Text>
@@ -129,7 +125,6 @@ export default function MapaScreen() {
         )}
       </MapView>
 
-      {/* MODAL DE ALERTA SE MANTIENE IGUAL */}
       <Modal visible={alertVisible} transparent={true} animationType="fade">
         <View style={styles.modal}>
           <View style={styles.alertCard}>

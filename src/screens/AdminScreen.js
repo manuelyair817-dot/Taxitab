@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { StyleSheet, View, Text, ActivityIndicator, FlatList } from 'react-native';
-// MODIFICACIÓN: Importamos UrlTile
-import MapView, { Marker, PROVIDER_GOOGLE, UrlTile } from 'react-native-maps'; 
+import MapView, { Marker, UrlTile } from 'react-native-maps'; // Quitamos PROVIDER_GOOGLE
 import { db } from '../config/firebase'; 
 import { collection, onSnapshot } from "firebase/firestore";
 
@@ -46,7 +45,6 @@ export default function AdminScreen() {
     <View style={styles.container}>
       <MapView
         ref={mapRef}
-        provider={PROVIDER_GOOGLE}
         style={styles.map}
         initialRegion={{
           latitude: 19.4326, 
@@ -55,11 +53,11 @@ export default function AdminScreen() {
           longitudeDelta: 0.07,
         }}
       >
-        {/* --- CAPA VISUAL GRATUITA PARA EL ADMINISTRADOR --- */}
         <UrlTile
           urlTemplate="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
           maximumZ={19}
           flipY={false}
+          zIndex={100}
         />
 
         {conductores.map((taxi) => (
@@ -71,6 +69,7 @@ export default function AdminScreen() {
             }}
             title={taxi.nombre || "Unidad"}
             description={`Placas: ${taxi.placas || 'S/N'}`}
+            zIndex={101}
           >
             <View style={[styles.marker, taxi.alertaActiva ? styles.alert : null]}>
               <Text style={{fontSize: 24}}>{taxi.alertaActiva ? "⚠️" : "🚕"}</Text>

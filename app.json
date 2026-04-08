@@ -26,9 +26,7 @@
         "FOREGROUND_SERVICE"
       ],
       "config": {
-        "googleMaps": {
-          "apiKey": "TU_API_KEY_AQUÍ" 
-        }
+        "googleMaps": {} 
       }
     },
     "web": {
