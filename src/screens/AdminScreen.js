@@ -9,8 +9,9 @@ export default function AdminScreen() {
   const [loading, setLoading] = useState(true);
   const mapRef = useRef(null);
 
-  // --- LLAVE DE TOMTOM (Misma que en MapaScreen) ---
+  // CONFIGURACIÓN DE TOMTOM (Misma que en MapaScreen para consistencia)
   const tomtomKey = "mlOxpfn6qOelhLKtRM49tHwCtkU3nNkT";
+  const tileUrl = `https://a.api.tomtom.com/map/1/tile/basic/main/{z}/{x}/{y}.png?key=${tomtomKey}`;
 
   useEffect(() => {
     // Escucha en tiempo real la colección de conductores
@@ -37,14 +38,14 @@ export default function AdminScreen() {
       typeof c.ubicacion.longitude === 'number'
     );
 
-    // Si hay taxis y el mapa está listo, centrar la vista en el primero o en un punto medio
+    // Centrar automáticamente la cámara si hay movimiento
     if (taxisConGPS.length > 0 && mapRef.current) {
       const pos = taxisConGPS[0].ubicacion;
       mapRef.current.animateToRegion({
         latitude: pos.latitude,
         longitude: pos.longitude,
-        latitudeDelta: 0.08, // Un poco más amplio para ver varias unidades
-        longitudeDelta: 0.08,
+        latitudeDelta: 0.05, 
+        longitudeDelta: 0.05,
       }, 1000);
     }
   }, [conductores]);
@@ -61,18 +62,21 @@ export default function AdminScreen() {
       <MapView
         ref={mapRef}
         style={styles.map}
+        // SEGURO: provider={null} evita que el APK busque Google Maps
+        provider={null} 
         initialRegion={{
-          latitude: 19.4326, 
-          longitude: -99.1332,
+          latitude: 19.35, 
+          longitude: -99.45,
           latitudeDelta: 0.1,
           longitudeDelta: 0.1,
         }}
       >
-        {/* INTEGRACIÓN DE TOMTOM PARA EL ADMIN */}
+        {/* INTEGRACIÓN DE TOMTOM */}
         <UrlTile
-          urlTemplate={`https://api.tomtom.com/map/1/tile/basic/main/{z}/{x}/{y}.png?key=${tomtomKey}`}
+          urlTemplate={tileUrl}
           maximumZ={19}
-          zIndex={100} 
+          tileSize={256}
+          zIndex={1} 
           shouldReplaceMapContent={true}
         />
 
@@ -85,8 +89,8 @@ export default function AdminScreen() {
                 longitude: parseFloat(taxi.ubicacion.longitude)
               }}
               title={taxi.nombre || "Unidad"}
-              description={taxi.alertaActiva ? "⚠️ ¡EMERGENCIA DETECTADA!" : "Estado: Normal"}
-              zIndex={101}
+              description={taxi.alertaActiva ? "⚠️ ¡EMERGENCIA!" : "Estado: Normal"}
+              zIndex={2}
             >
               <View style={[styles.marker, taxi.alertaActiva ? styles.alert : null]}>
                 <Text style={{fontSize: 24}}>{taxi.alertaActiva ? "🚨" : "🚕"}</Text>
@@ -97,12 +101,15 @@ export default function AdminScreen() {
       </MapView>
 
       <View style={styles.listContainer}>
-        <Text style={styles.listTitle}>UNIDADES EN CIRCULACIÓN ({conductores.length})</Text>
+        <Text style={styles.listTitle}>UNIDADES ACTIVAS ({conductores.length})</Text>
         <FlatList
           data={conductores}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
-            <View style={[styles.card, item.alertaActiva ? {borderLeftColor: '#ff0000'} : {borderLeftColor: '#4CAF50'}]}>
+            <View style={[
+                styles.card, 
+                item.alertaActiva ? {borderLeftColor: '#ff0000'} : {borderLeftColor: '#4CAF50'}
+            ]}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.cardName}>{item.nombre || "Conductor Taxitab"}</Text>
                 <Text style={styles.cardSub}>Email: {item.email || 'Sin registro'}</Text>
@@ -112,7 +119,7 @@ export default function AdminScreen() {
               </View>
               {item.alertaActiva && (
                 <View style={styles.badgeAlert}>
-                  <Text style={styles.alertText}>CHOQUE / GIRO</Text>
+                  <Text style={styles.alertText}>ALERTA</Text>
                 </View>
               )}
             </View>
@@ -132,7 +139,7 @@ const styles = StyleSheet.create({
   card: { backgroundColor: '#1a1a1a', padding: 12, borderRadius: 10, marginBottom: 8, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderLeftWidth: 5 },
   cardName: { color: '#fff', fontWeight: 'bold', fontSize: 15 },
   cardSub: { color: '#888', fontSize: 12, marginTop: 2 },
-  marker: { backgroundColor: '#fff', padding: 5, borderRadius: 25, elevation: 5, shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 2, borderWidth: 1, borderColor: '#ddd' },
+  marker: { backgroundColor: '#fff', padding: 5, borderRadius: 25, elevation: 5, borderWidth: 1, borderColor: '#ddd' },
   alert: { backgroundColor: '#ff0000', borderColor: '#fff', borderWidth: 3 },
   badgeAlert: { backgroundColor: '#ff0000', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 5 },
   alertText: { color: '#fff', fontSize: 10, fontWeight: 'bold' }

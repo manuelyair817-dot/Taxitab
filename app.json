@@ -1,47 +1,49 @@
 {
   "expo": {
     "name": "Taxitab",
-    "slug": "taxitab",
+    "slug": "Taxitab",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "splash": {
-      "image": "./assets/splash.png",
+      "image": "./assets/icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
-    "assetBundlePatterns": [
-      "**/*"
-    ],
     "ios": {
       "supportsTablet": true
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/icon.png"
       },
-      "package": "com.yair.taxitab",
+      "package": "com.yair2.Taxitab",
       "permissions": [
-        "ACCESS_COARSE_LOCATION",
         "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
         "FOREGROUND_SERVICE",
         "FOREGROUND_SERVICE_LOCATION",
-        "ACTIVITY_RECOGNITION" 
+        "INTERNET",
+        "VIBRATE",
+        "ACTIVITY_RECOGNITION"
       ]
     },
     "plugins": [
       [
         "expo-location",
         {
-          "locationAlwaysPermissionMsg": "Taxitab necesita rastrear tu ubicación para detectar accidentes en tiempo real."
+          "locationAlwaysPermissionMsg": "Taxitab necesita acceso al GPS para monitorear la unidad y detectar accidentes."
         }
       ]
     ],
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
     "extra": {
       "eas": {
-        "projectId": "tu-project-id"
+        "projectId": "19d884cf-becd-4858-85ab-8af0f4c5f4c4"
       },
       "tomtomKey": "mlOxpfn6qOelhLKtRM49tHwCtkU3nNkT"
     }
