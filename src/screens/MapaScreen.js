@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { StyleSheet, Text, View, ActivityIndicator, TouchableOpacity, Modal, Alert } from 'react-native';
-import MapView, { Marker, UrlTile } from 'react-native-maps'; // Quitamos PROVIDER_GOOGLE
+import MapView, { Marker, UrlTile } from 'react-native-maps'; 
 import * as Location from 'expo-location';
 import { Accelerometer, Gyroscope } from 'expo-sensors';
 import { db, auth } from '../config/firebase'; 
@@ -11,6 +11,9 @@ export default function MapaScreen() {
   const [loading, setLoading] = useState(true);
   const [alertVisible, setAlertVisible] = useState(false);
   const mapRef = useRef(null);
+
+  // --- LLAVE DE TOMTOM ---
+  const tomtomKey = "mlOxpfn6qOelhLKtRM49tHwCtkU3nNkT";
 
   useEffect(() => {
     (async () => {
@@ -102,11 +105,13 @@ export default function MapaScreen() {
           longitudeDelta: 0.005,
         }}
       >
+        {/* CAMBIO CLAVE: Ahora usamos TomTom en lugar de OSM directo */}
         <UrlTile
-          urlTemplate="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+          urlTemplate={`https://api.tomtom.com/map/1/tile/basic/main/{z}/{x}/{y}.png?key=${tomtomKey}`}
           maximumZ={19}
           flipY={false}
           zIndex={100}
+          shouldReplaceMapContent={true}
         />
 
         {location && (
@@ -119,7 +124,7 @@ export default function MapaScreen() {
             zIndex={101}
           >
             <View style={styles.taxiMarker}>
-               <Text style={{fontSize: 30}}>🚕</Text>
+                <Text style={{fontSize: 30}}>🚕</Text>
             </View>
           </Marker>
         )}

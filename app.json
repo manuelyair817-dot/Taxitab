@@ -24,13 +24,9 @@
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
         "FOREGROUND_SERVICE",
-        "INTERNET" 
-      ],
-      "config": {
-        "googleMaps": {
-          "apiKey": "AIzaSy_Bypass_OpenStreetMap"
-        }
-      }
+        "INTERNET",
+        "VIBRATE"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
