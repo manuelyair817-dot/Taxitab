@@ -1,16 +1,27 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, TextInput, TouchableOpacity, View, SafeAreaView } from 'react-native';
+import { StyleSheet, Text, TextInput, TouchableOpacity, View, SafeAreaView, Alert } from 'react-native';
 
 export default function LoginWithEmailScreen({ navigation }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
   const handleLogin = () => {
-    // Aquí conectaremos con Firebase después
+    // 1. Verificamos que los campos no estén vacíos
     if(email && password) {
-      navigation.navigate('Mapa'); // Por ahora, vamos directo al Mapa
+      
+      // 2. Filtro de Administrador: 
+      // Si el correo es el del jefe, lo mandamos a la nueva pantalla Admin
+      if (email.toLowerCase() === 'admin@taxitab.com') {
+        navigation.navigate('Admin'); 
+      } 
+      // 3. Si es cualquier otro correo, sigue funcionando como antes para los choferes
+      else {
+        navigation.navigate('Mapa'); 
+      }
+
     } else {
-      alert("Por favor llena todos los campos");
+      // Usamos Alert en lugar de alert para que se vea mejor en Android
+      Alert.alert("Campos vacíos", "Por favor llena todos los campos para ingresar.");
     }
   };
 
