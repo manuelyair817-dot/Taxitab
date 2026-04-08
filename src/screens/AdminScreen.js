@@ -9,9 +9,11 @@ export default function AdminScreen() {
   const [loading, setLoading] = useState(true);
   const mapRef = useRef(null);
 
+  // --- LLAVE DE TOMTOM (Misma que en MapaScreen) ---
+  const tomtomKey = "mlOxpfn6qOelhLKtRM49tHwCtkU3nNkT";
+
   useEffect(() => {
-    // 1. CORRECCIÓN DE COLECCIÓN: Asegúrate que en Firebase sea "conductores"
-    // Si en tu captura la colección tiene otro nombre, cámbialo aquí.
+    // Escucha en tiempo real la colección de conductores
     const unsub = onSnapshot(collection(db, "conductores"), (snapshot) => {
       const docs = [];
       snapshot.forEach((doc) => {
@@ -28,26 +30,30 @@ export default function AdminScreen() {
   }, []);
 
   useEffect(() => {
-    // 2. CORRECCIÓN DE MOVIMIENTO: Solo si el taxi tiene ubicación numérica real
+    // Filtramos solo conductores que tengan coordenadas válidas
     const taxisConGPS = conductores.filter(c => 
       c.ubicacion && 
       typeof c.ubicacion.latitude === 'number' && 
       typeof c.ubicacion.longitude === 'number'
     );
 
+    // Si hay taxis y el mapa está listo, centrar la vista en el primero o en un punto medio
     if (taxisConGPS.length > 0 && mapRef.current) {
       const pos = taxisConGPS[0].ubicacion;
       mapRef.current.animateToRegion({
         latitude: pos.latitude,
         longitude: pos.longitude,
-        latitudeDelta: 0.04,
-        longitudeDelta: 0.04,
+        latitudeDelta: 0.08, // Un poco más amplio para ver varias unidades
+        longitudeDelta: 0.08,
       }, 1000);
     }
   }, [conductores]);
 
   if (loading) return (
-    <View style={styles.loading}><ActivityIndicator size="large" color="#D32F2F" /></View>
+    <View style={styles.loading}>
+      <ActivityIndicator size="large" color="#D32F2F" />
+      <Text style={{color: '#fff', marginTop: 10}}>Cargando Panel de Control...</Text>
+    </View>
   );
 
   return (
@@ -55,23 +61,22 @@ export default function AdminScreen() {
       <MapView
         ref={mapRef}
         style={styles.map}
-        // Región inicial por defecto (Centro de México o tu zona)
         initialRegion={{
           latitude: 19.4326, 
-          longitude: -98.1332,
+          longitude: -99.1332,
           latitudeDelta: 0.1,
           longitudeDelta: 0.1,
         }}
       >
+        {/* INTEGRACIÓN DE TOMTOM PARA EL ADMIN */}
         <UrlTile
-          urlTemplate="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+          urlTemplate={`https://api.tomtom.com/map/1/tile/basic/main/{z}/{x}/{y}.png?key=${tomtomKey}`}
           maximumZ={19}
-          flipY={false}
           zIndex={100} 
+          shouldReplaceMapContent={true}
         />
 
         {conductores.map((taxi) => (
-          // 3. CORRECCIÓN DE RENDERIZADO: Validar que la ubicación exista antes de dibujar el Marker
           taxi.ubicacion?.latitude && taxi.ubicacion?.longitude ? (
             <Marker 
               key={taxi.id}
@@ -80,10 +85,11 @@ export default function AdminScreen() {
                 longitude: parseFloat(taxi.ubicacion.longitude)
               }}
               title={taxi.nombre || "Unidad"}
+              description={taxi.alertaActiva ? "⚠️ ¡EMERGENCIA DETECTADA!" : "Estado: Normal"}
               zIndex={101}
             >
               <View style={[styles.marker, taxi.alertaActiva ? styles.alert : null]}>
-                <Text style={{fontSize: 24}}>{taxi.alertaActiva ? "⚠️" : "🚕"}</Text>
+                <Text style={{fontSize: 24}}>{taxi.alertaActiva ? "🚨" : "🚕"}</Text>
               </View>
             </Marker>
           ) : null
@@ -96,17 +102,17 @@ export default function AdminScreen() {
           data={conductores}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
-            <View style={styles.card}>
+            <View style={[styles.card, item.alertaActiva ? {borderLeftColor: '#ff0000'} : {borderLeftColor: '#4CAF50'}]}>
               <View style={{ flex: 1 }}>
-                <Text style={styles.cardName}>{item.nombre || "Usuario de Prueba"}</Text>
-                <Text style={styles.cardSub}>Placas: {item.placas || 'S/N'}</Text>
+                <Text style={styles.cardName}>{item.nombre || "Conductor Taxitab"}</Text>
+                <Text style={styles.cardSub}>Email: {item.email || 'Sin registro'}</Text>
                 <Text style={[styles.cardSub, { color: item.ubicacion ? '#4CAF50' : '#FF5252' }]}>
-                  {item.ubicacion ? "● Conectado (GPS)" : "○ Desconectado"}
+                  {item.ubicacion ? "● Localizado" : "○ Sin señal GPS"}
                 </Text>
               </View>
               {item.alertaActiva && (
                 <View style={styles.badgeAlert}>
-                  <Text style={styles.alertText}>EMERGENCIA</Text>
+                  <Text style={styles.alertText}>CHOQUE / GIRO</Text>
                 </View>
               )}
             </View>
@@ -121,13 +127,13 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000' },
   map: { flex: 0.65 },
   listContainer: { flex: 0.35, backgroundColor: '#000', padding: 15 },
-  loading: { flex: 1, justifyContent: 'center', backgroundColor: '#000' },
+  loading: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#000' },
   listTitle: { color: '#fff', fontWeight: 'bold', marginBottom: 10, fontSize: 16, textAlign: 'center' },
-  card: { backgroundColor: '#1a1a1a', padding: 12, borderRadius: 10, marginBottom: 8, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderLeftWidth: 4, borderLeftColor: '#D32F2F' },
+  card: { backgroundColor: '#1a1a1a', padding: 12, borderRadius: 10, marginBottom: 8, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderLeftWidth: 5 },
   cardName: { color: '#fff', fontWeight: 'bold', fontSize: 15 },
   cardSub: { color: '#888', fontSize: 12, marginTop: 2 },
-  marker: { backgroundColor: '#fff', padding: 5, borderRadius: 25, elevation: 5, shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 2 },
-  alert: { backgroundColor: '#ff0000', borderColor: '#fff', borderWidth: 2 },
+  marker: { backgroundColor: '#fff', padding: 5, borderRadius: 25, elevation: 5, shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 2, borderWidth: 1, borderColor: '#ddd' },
+  alert: { backgroundColor: '#ff0000', borderColor: '#fff', borderWidth: 3 },
   badgeAlert: { backgroundColor: '#ff0000', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 5 },
   alertText: { color: '#fff', fontSize: 10, fontWeight: 'bold' }
 });

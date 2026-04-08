@@ -25,7 +25,8 @@
         "ACCESS_COARSE_LOCATION",
         "FOREGROUND_SERVICE",
         "INTERNET",
-        "VIBRATE"
+        "VIBRATE",
+        "com.google.android.gms.permission.ACTIVITY_RECOGNITION"
       ]
     },
     "web": {
