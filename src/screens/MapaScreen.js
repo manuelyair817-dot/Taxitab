@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { StyleSheet, Text, View, ActivityIndicator, TouchableOpacity, Modal, Alert } from 'react-native';
-import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
+// MODIFICACIÓN: Importamos UrlTile
+import MapView, { Marker, PROVIDER_GOOGLE, UrlTile } from 'react-native-maps'; 
 import * as Location from 'expo-location';
 import { Accelerometer, Gyroscope } from 'expo-sensors';
 import { db, auth } from '../config/firebase'; 
@@ -12,7 +13,6 @@ export default function MapaScreen() {
   const [alertVisible, setAlertVisible] = useState(false);
   const mapRef = useRef(null);
 
-  // 1. RASTREO GPS SENSIBLE Y EN TIEMPO REAL
   useEffect(() => {
     (async () => {
       let { status } = await Location.requestForegroundPermissionsAsync();
@@ -22,22 +22,18 @@ export default function MapaScreen() {
         return;
       }
 
-      // Obtener posición inicial para quitar el cargando
       let initial = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
       setLocation(initial);
       setLoading(false);
 
-      // Suscripción de alta frecuencia
       await Location.watchPositionAsync({
-        accuracy: Location.Accuracy.BestForNavigation, // Máxima precisión
-        timeInterval: 800,    // Actualiza cada menos de 1 segundo
-        distanceInterval: 1,  // Actualiza cada 1 metro de movimiento
+        accuracy: Location.Accuracy.BestForNavigation,
+        timeInterval: 800,
+        distanceInterval: 1,
       }, async (newLoc) => {
         const { latitude, longitude } = newLoc.coords;
         setLocation(newLoc);
 
-        // --- ANIMACIÓN DE CÁMARA ---
-        // Esto hace que el mapa siga al taxi suavemente
         mapRef.current?.animateToRegion({
           latitude,
           longitude,
@@ -45,7 +41,6 @@ export default function MapaScreen() {
           longitudeDelta: 0.005,
         }, 600); 
 
-        // Sincronizar con Firebase
         try {
           const user = auth.currentUser;
           if (user) {
@@ -60,16 +55,13 @@ export default function MapaScreen() {
     })();
   }, []);
 
-  // 2. SENSORES (IMPACTO Y GIRO)
   useEffect(() => {
     const subAccel = Accelerometer.addListener(data => {
       const force = Math.sqrt(data.x ** 2 + data.y ** 2 + data.z ** 2);
-      // Sensibilidad ajustada a 3.5 para pruebas más fáciles
       if (force > 3.5) setAlertVisible(true);
     });
 
     const subGyro = Gyroscope.addListener(async (data) => {
-      // Sensibilidad de giro ajustada a 4.0
       if (Math.abs(data.z) > 4.0) { 
         const user = auth.currentUser;
         if (user) {
@@ -84,7 +76,7 @@ export default function MapaScreen() {
       }
     });
 
-    Accelerometer.setUpdateInterval(100); // Más rápido (10 lecturas por segundo)
+    Accelerometer.setUpdateInterval(100);
     Gyroscope.setUpdateInterval(100);
 
     return () => {
@@ -108,13 +100,20 @@ export default function MapaScreen() {
         style={styles.map}
         initialRegion={{
           latitude: location?.coords.latitude || 19.4326,
-          longitude: location?.coords.longitude || -99.1332,
+          longitude: location?.coords.longitude || -98.1332,
           latitudeDelta: 0.005, 
           longitudeDelta: 0.005,
         }}
         showsUserLocation={true}
-        followsUserLocation={true} // Ayuda al seguimiento en tiempo real
+        followsUserLocation={true}
       >
+        {/* --- NUEVA CAPA VISUAL GRATUITA --- */}
+        <UrlTile
+          urlTemplate="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+          maximumZ={19}
+          flipY={false}
+        />
+
         {location && (
           <Marker 
             coordinate={{
@@ -130,6 +129,7 @@ export default function MapaScreen() {
         )}
       </MapView>
 
+      {/* MODAL DE ALERTA SE MANTIENE IGUAL */}
       <Modal visible={alertVisible} transparent={true} animationType="fade">
         <View style={styles.modal}>
           <View style={styles.alertCard}>
@@ -160,7 +160,7 @@ const styles = StyleSheet.create({
   loading: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#121212' },
   taxiMarker: { backgroundColor: 'rgba(255,255,255,0.7)', padding: 5, borderRadius: 20 },
   modal: { flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'center', alignItems: 'center' },
-  alertCard: { backgroundColor: '#1a1a1a', padding: 25, borderRadius: 20, alignItems: 'center', width: '85%', borderHighlight: 2, borderColor: '#ff0000', borderWidth: 1 },
+  alertCard: { backgroundColor: '#1a1a1a', padding: 25, borderRadius: 20, alignItems: 'center', width: '85%', borderColor: '#ff0000', borderWidth: 1 },
   alertTitle: { fontSize: 20, fontWeight: 'bold', color: '#ff0000', marginBottom: 10 },
   alertText: { color: '#bbb', textAlign: 'center', marginBottom: 20 },
   btnPanic: { backgroundColor: '#ff0000', padding: 15, borderRadius: 25, width: '100%' },
