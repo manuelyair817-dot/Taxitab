@@ -14,94 +14,76 @@ export default function MapaScreen() {
   const tomtomKey = "mlOxpfn6qOelhLKtRM49tHwCtkU3nNkT";
 
   useEffect(() => {
+    let isMounted = true;
+
     (async () => {
-      let { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Error', 'Permiso de GPS denegado');
-        setLoading(false);
-        return;
-      }
-
-      // Obtener ubicación inicial con tiempo de espera (timeout) para evitar bloqueos
       try {
-        let initial = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-        setLocation(initial);
-      } catch (error) {
-        console.log("Error ubicación inicial:", error);
-      }
-      
-      setLoading(false);
-
-      // Vigilancia de posición con seguros
-      await Location.watchPositionAsync({
-        accuracy: Location.Accuracy.High,
-        timeInterval: 1000,
-        distanceInterval: 5,
-      }, async (newLoc) => {
-        if (!newLoc || !newLoc.coords) return; // SEGURO 1: Evita procesar datos nulos
-
-        const { latitude, longitude } = newLoc.coords;
-        setLocation(newLoc);
-
-        // SEGURO 2: Solo anima si el mapa ya cargó (mapRef.current no es null)
-        if (mapRef.current) {
-          mapRef.current.animateToRegion({
-            latitude,
-            longitude,
-            latitudeDelta: 0.005,
-            longitudeDelta: 0.005,
-          }, 1000); 
+        // 1. Pedir permisos con calma
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') {
+          Alert.alert('Error', 'Necesitamos el GPS para trabajar.');
+          if (isMounted) setLoading(false);
+          return;
         }
 
-        try {
-          const user = auth.currentUser;
-          if (user) {
-            const conductorRef = doc(db, "conductores", user.uid);
-            await updateDoc(conductorRef, {
-              ubicacion: { latitude, longitude },
-              ultimaConexion: new Date().toISOString()
-            });
-          }
-        } catch (e) { console.log("Error Firebase Sync:", e.message); }
-      });
+        // 2. Obtener posición inicial estable
+        const initial = await Location.getCurrentPositionAsync({ 
+          accuracy: Location.Accuracy.Balanced 
+        });
+        
+        if (isMounted) {
+          setLocation(initial);
+          setLoading(false);
+        }
+
+        // 3. Vigilancia pasiva (SIN animaciones automáticas que causan crash)
+        await Location.watchPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+          timeInterval: 5000, // Actualiza cada 5 seg para no saturar
+          distanceInterval: 10,
+        }, async (newLoc) => {
+          if (!isMounted || !newLoc?.coords) return;
+
+          const { latitude, longitude } = newLoc.coords;
+          setLocation(newLoc);
+
+          // Sincronizar con Firebase de forma silenciosa
+          try {
+            const user = auth.currentUser;
+            if (user) {
+              const conductorRef = doc(db, "conductores", user.uid);
+              await updateDoc(conductorRef, {
+                ubicacion: { latitude, longitude },
+                ultimaConexion: new Date().toISOString()
+              });
+            }
+          } catch (e) { console.log("Fbc Error:", e.message); }
+        });
+
+      } catch (err) {
+        console.log("GPS Crash Prevention:", err);
+        if (isMounted) setLoading(false);
+      }
     })();
+
+    return () => { isMounted = false; };
   }, []);
 
+  // --- Sensores con intervalo más relajado ---
   useEffect(() => {
     const subAccel = Accelerometer.addListener(data => {
       const force = Math.sqrt(data.x ** 2 + data.y ** 2 + data.z ** 2);
-      if (force > 3.8) setAlertVisible(true);
+      if (force > 4.5) setAlertVisible(true);
     });
 
-    const subGyro = Gyroscope.addListener(async (data) => {
-      if (Math.abs(data.z) > 4.5) { 
-        const user = auth.currentUser;
-        if (user) {
-          const conductorRef = doc(db, "conductores", user.uid);
-          try {
-            await updateDoc(conductorRef, { 
-              alertaActiva: true, 
-              tipoAlerta: "Giro Brusco",
-              fechaAlerta: new Date().toISOString()
-            });
-          } catch (e) { console.log("Error Gyro Sync:", e); }
-        }
-      }
-    });
-
-    Accelerometer.setUpdateInterval(200);
-    Gyroscope.setUpdateInterval(200);
-
-    return () => {
-      subAccel.remove();
-      subGyro.remove();
-    };
+    Accelerometer.setUpdateInterval(500); // 0.5 segundos
+    return () => subAccel.remove();
   }, []);
 
   if (loading) return (
     <View style={styles.loading}>
       <ActivityIndicator size="large" color="#D32F2F" />
-      <Text style={{color: '#fff', marginTop: 10}}>Iniciando sistemas de Taxitab...</Text>
+      <Text style={{color: '#fff', marginTop: 10}}>Cargando Taxitab...</Text>
     </View>
   );
 
@@ -110,7 +92,6 @@ export default function MapaScreen() {
       <MapView
         ref={mapRef}
         style={styles.map}
-        // SEGURO 3: Coordenadas por defecto si location es null al inicio
         initialRegion={{
           latitude: location?.coords?.latitude || 19.4326,
           longitude: location?.coords?.longitude || -99.1332,
@@ -121,8 +102,7 @@ export default function MapaScreen() {
         <UrlTile
           urlTemplate={`https://api.tomtom.com/map/1/tile/basic/main/{z}/{x}/{y}.png?key=${tomtomKey}`}
           maximumZ={19}
-          zIndex={100}
-          shouldReplaceMapContent={true}
+          zIndex={1}
         />
 
         {location?.coords && (
@@ -131,8 +111,6 @@ export default function MapaScreen() {
               latitude: location.coords.latitude,
               longitude: location.coords.longitude
             }} 
-            title="Mi Taxi"
-            zIndex={101}
           >
             <View style={styles.taxiMarker}>
                 <Text style={{fontSize: 30}}>🚕</Text>
@@ -141,22 +119,20 @@ export default function MapaScreen() {
         )}
       </MapView>
 
-      <Modal visible={alertVisible} transparent={true} animationType="slide">
+      {/* Botón manual de pánico por si acaso */}
+      <TouchableOpacity 
+        style={styles.panicButton} 
+        onPress={() => setAlertVisible(true)}
+      >
+        <Text style={{fontSize: 25}}>🚨</Text>
+      </TouchableOpacity>
+
+      <Modal visible={alertVisible} transparent animationType="fade">
         <View style={styles.modal}>
           <View style={styles.alertCard}>
-            <Text style={styles.alertTitle}>⚠️ ¡MOVIMIENTO BRUSCO!</Text>
-            <Text style={styles.alertText}>Se ha detectado una maniobra de riesgo en la unidad.</Text>
-            <TouchableOpacity 
-                style={styles.btnPanic} 
-                onPress={() => {
-                    Alert.alert("NOTIFICADO", "La central ha recibido tu ubicación.");
-                    setAlertVisible(false);
-                }}
-            >
-              <Text style={styles.btnText}>SOLICITAR AYUDA</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => setAlertVisible(false)}>
-              <Text style={styles.btnCancel}>IGNORAR</Text>
+            <Text style={styles.alertTitle}>ALERTA</Text>
+            <TouchableOpacity style={styles.btnPanic} onPress={() => setAlertVisible(false)}>
+              <Text style={styles.btnText}>ESTOY BIEN</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -168,13 +144,12 @@ export default function MapaScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   map: { width: '100%', height: '100%' },
-  loading: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#121212' },
-  taxiMarker: { backgroundColor: 'rgba(255,255,255,0.8)', padding: 5, borderRadius: 20 },
+  loading: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#000' },
+  taxiMarker: { backgroundColor: 'rgba(255,255,255,0.7)', padding: 5, borderRadius: 20 },
+  panicButton: { position: 'absolute', bottom: 30, right: 30, backgroundColor: 'red', width: 60, height: 60, borderRadius: 30, justifyContent: 'center', alignItems: 'center', elevation: 10 },
   modal: { flex: 1, backgroundColor: 'rgba(0,0,0,0.8)', justifyContent: 'center', alignItems: 'center' },
-  alertCard: { backgroundColor: '#1a1a1a', padding: 25, borderRadius: 20, alignItems: 'center', width: '85%', borderColor: '#ff0000', borderWidth: 2 },
-  alertTitle: { fontSize: 20, fontWeight: 'bold', color: '#ff0000', marginBottom: 10 },
-  alertText: { color: '#fff', textAlign: 'center', marginBottom: 20 },
-  btnPanic: { backgroundColor: '#ff0000', padding: 15, borderRadius: 25, width: '100%' },
-  btnText: { color: '#fff', textAlign: 'center', fontWeight: 'bold' },
-  btnCancel: { marginTop: 20, color: '#888', textDecorationLine: 'underline' }
+  alertCard: { backgroundColor: '#1a1a1a', padding: 30, borderRadius: 20, alignItems: 'center', width: '80%' },
+  alertTitle: { fontSize: 22, fontWeight: 'bold', color: '#ff0000', marginBottom: 20 },
+  btnPanic: { backgroundColor: '#ff0000', padding: 15, borderRadius: 10, width: '100%' },
+  btnText: { color: '#fff', textAlign: 'center', fontWeight: 'bold' }
 });
