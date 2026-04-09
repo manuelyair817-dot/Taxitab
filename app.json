@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Taxitab",
-    "slug": "Taxitab",
+    "slug": "TaxitabFinal",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -19,7 +19,7 @@
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/icon.png"
       },
-      "package": "com.yair2.Taxitab",
+      "package": "com.yair2.TaxitabFinal",
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
