@@ -41,9 +41,9 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "extra": {
+   "extra": {
       "eas": {
-        "projectId": "19d884cf-becd-4858-85ab-8af0f4c5f4c4"
+        "projectId": "19d884cf-becd-4858-85ab-8af0f4c5f4c4" // <-- BORRA ESTA LÍNEA
       },
       "tomtomKey": "mlOxpfn6qOelhLKtRM49tHwCtkU3nNkT"
     }
