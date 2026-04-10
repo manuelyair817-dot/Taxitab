@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { StyleSheet, Text, View, ActivityIndicator, TouchableOpacity, Modal, Alert } from 'react-native';
-import MapView, { Marker, UrlTile } from 'react-native-maps'; 
+import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps'; // ← Cambiado
 import * as Location from 'expo-location';
-import { Accelerometer, Gyroscope } from 'expo-sensors'; // <-- Volvemos a importar
+import { Accelerometer, Gyroscope } from 'expo-sensors';
 import { db, auth } from '../config/firebase'; 
 import { doc, updateDoc } from "firebase/firestore";
 
@@ -11,9 +11,8 @@ export default function MapaScreen() {
   const [loading, setLoading] = useState(true);
   const [alertVisible, setAlertVisible] = useState(false);
   const mapRef = useRef(null);
-  const tomtomKey = "mlOxpfn6qOelhLKtRM49tHwCtkU3nNkT";
 
-  // --- 1. LÓGICA DE GPS (Con seguros anti-crash) ---
+  // --- 1. LÓGICA DE GPS ---
   useEffect(() => {
     let isMounted = true;
     (async () => {
@@ -42,7 +41,7 @@ export default function MapaScreen() {
           if (!isMounted || !newLoc?.coords) return;
           const { latitude, longitude } = newLoc.coords;
           setLocation(newLoc);
-          syncFirebase(latitude, longitude, false, ""); // Sincronización normal
+          syncFirebase(latitude, longitude, false, "");
         });
 
       } catch (err) {
@@ -52,7 +51,7 @@ export default function MapaScreen() {
     return () => { isMounted = false; };
   }, []);
 
-  // Función auxiliar para Firebase con control de errores
+  // --- Firebase ---
   const syncFirebase = async (lat, lon, alerta, tipoAlerta) => {
     try {
       const user = auth.currentUser;
@@ -62,7 +61,6 @@ export default function MapaScreen() {
           ubicacion: { latitude: lat, longitude: lon },
           ultimaConexion: new Date().toISOString()
         };
-        // Si hay alerta, añadimos los campos
         if (alerta) {
           updates.alertaActiva = true;
           updates.tipoAlerta = tipoAlerta;
@@ -73,15 +71,13 @@ export default function MapaScreen() {
     } catch (e) { /* Error silencioso */ }
   };
 
-  // --- 2. LÓGICA DE SENSORES (ACELERÓMETRO Y GIROSCOPIO) - RECUPERADA ---
+  // --- 2. SENSORES ---
   useEffect(() => {
     let isMounted = true;
 
-    // Acelerómetro: Detecta impacto (fuerza G)
     const subAccel = Accelerometer.addListener(data => {
       if (!isMounted) return;
       const force = Math.sqrt(data.x ** 2 + data.y ** 2 + data.z ** 2);
-      // Umbral de fuerza G (3.8 es un golpe fuerte)
       if (force > 3.8 && !alertVisible) {
         setAlertVisible(true);
         if (location?.coords) {
@@ -90,10 +86,8 @@ export default function MapaScreen() {
       }
     });
 
-    // Giroscopio: Detecta giro brusco (rad/s)
     const subGyro = Gyroscope.addListener(data => {
       if (!isMounted) return;
-      // Umbral de giro (4.5 es un viraje violento)
       if (Math.abs(data.z) > 4.5 && !alertVisible) { 
         setAlertVisible(true);
         if (location?.coords) {
@@ -102,7 +96,6 @@ export default function MapaScreen() {
       }
     });
 
-    // Intervalos de actualización (relajados para no saturar)
     Accelerometer.setUpdateInterval(300); 
     Gyroscope.setUpdateInterval(300);
 
@@ -111,10 +104,9 @@ export default function MapaScreen() {
       subAccel.remove();
       subGyro.remove();
     };
-  }, [location, alertVisible]); // Escuchamos location para poder mandar la alerta con GPS
+  }, [location, alertVisible]);
 
-
-  // --- 3. RENDERIZADO (Con seguro anti-crash en el MapView) ---
+  // --- 3. RENDERIZADO ---
   if (loading) return (
     <View style={styles.loading}>
       <ActivityIndicator size="large" color="#D32F2F" />
@@ -124,11 +116,11 @@ export default function MapaScreen() {
 
   return (
     <View style={styles.container}>
-      {/* SEGURO: Solo cargamos el MapView si ya tenemos la ubicación inicial */}
       {location?.coords ? (
         <MapView
           ref={mapRef}
           style={styles.map}
+          provider={PROVIDER_GOOGLE}  // ← Google Maps
           initialRegion={{
             latitude: location.coords.latitude,
             longitude: location.coords.longitude,
@@ -136,12 +128,7 @@ export default function MapaScreen() {
             longitudeDelta: 0.01,
           }}
         >
-          <UrlTile
-            urlTemplate={`https://api.tomtom.com/map/1/tile/basic/main/{z}/{x}/{y}.png?key=${tomtomKey}`}
-            maximumZ={19}
-            zIndex={1}
-          />
-
+          {/* Ya NO hay UrlTile, Google Maps lo maneja solo */}
           <Marker 
             coordinate={{
               latitude: location.coords.latitude,
@@ -149,7 +136,7 @@ export default function MapaScreen() {
             }} 
           >
             <View style={styles.taxiMarker}>
-                <Text style={{fontSize: 30}}>🚕</Text>
+              <Text style={{fontSize: 30}}>🚕</Text>
             </View>
           </Marker>
         </MapView>
@@ -160,7 +147,7 @@ export default function MapaScreen() {
         </View>
       )}
 
-      {/* Botón manual de pánico */}
+      {/* Botón de pánico */}
       <TouchableOpacity 
         style={styles.panicButton} 
         onPress={() => setAlertVisible(true)}
@@ -168,7 +155,7 @@ export default function MapaScreen() {
         <Text style={{fontSize: 25}}>🚨</Text>
       </TouchableOpacity>
 
-      {/* Modal de Alerta (Automática o Manual) */}
+      {/* Modal de Alerta */}
       <Modal visible={alertVisible} transparent animationType="fade">
         <View style={styles.modal}>
           <View style={styles.alertCard}>

@@ -12,7 +12,10 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "config": {
+        "googleMapsApiKey": "AIzaSyDSaEe0ZPxE52VRpZtpixZNpzZagXMqFT0"
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -20,6 +23,11 @@
         "foregroundImage": "./assets/icon.png"
       },
       "package": "com.yair2.TaxitabFinal",
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyDSaEe0ZPxE52VRpZtpixZNpzZagXMqFT0"
+        }
+      },
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
