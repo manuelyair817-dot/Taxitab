@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { StyleSheet, View, Text, ActivityIndicator, FlatList } from 'react-native';
-import MapView, { Marker, UrlTile } from 'react-native-maps'; 
+import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps'; // ← Cambiado
 import { db } from '../config/firebase'; 
 import { collection, onSnapshot } from "firebase/firestore";
 
@@ -9,12 +9,7 @@ export default function AdminScreen() {
   const [loading, setLoading] = useState(true);
   const mapRef = useRef(null);
 
-  // CONFIGURACIÓN DE TOMTOM (Misma que en MapaScreen para consistencia)
-  const tomtomKey = "mlOxpfn6qOelhLKtRM49tHwCtkU3nNkT";
-  const tileUrl = `https://a.api.tomtom.com/map/1/tile/basic/main/{z}/{x}/{y}.png?key=${tomtomKey}`;
-
   useEffect(() => {
-    // Escucha en tiempo real la colección de conductores
     const unsub = onSnapshot(collection(db, "conductores"), (snapshot) => {
       const docs = [];
       snapshot.forEach((doc) => {
@@ -31,14 +26,12 @@ export default function AdminScreen() {
   }, []);
 
   useEffect(() => {
-    // Filtramos solo conductores que tengan coordenadas válidas
     const taxisConGPS = conductores.filter(c => 
       c.ubicacion && 
       typeof c.ubicacion.latitude === 'number' && 
       typeof c.ubicacion.longitude === 'number'
     );
 
-    // Centrar automáticamente la cámara si hay movimiento
     if (taxisConGPS.length > 0 && mapRef.current) {
       const pos = taxisConGPS[0].ubicacion;
       mapRef.current.animateToRegion({
@@ -62,8 +55,7 @@ export default function AdminScreen() {
       <MapView
         ref={mapRef}
         style={styles.map}
-        // SEGURO: provider={null} evita que el APK busque Google Maps
-        provider={null} 
+        provider={PROVIDER_GOOGLE}  // ← Google Maps, sin UrlTile 
         initialRegion={{
           latitude: 19.35, 
           longitude: -99.45,
@@ -71,14 +63,7 @@ export default function AdminScreen() {
           longitudeDelta: 0.1,
         }}
       >
-        {/* INTEGRACIÓN DE TOMTOM */}
-        <UrlTile
-          urlTemplate={tileUrl}
-          maximumZ={19}
-          tileSize={256}
-          zIndex={1} 
-          shouldReplaceMapContent={true}
-        />
+        {/* Ya NO hay UrlTile lo quite xd */}
 
         {conductores.map((taxi) => (
           taxi.ubicacion?.latitude && taxi.ubicacion?.longitude ? (
